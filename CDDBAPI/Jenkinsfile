@@ -4,9 +4,7 @@ pipeline {
     stage('Build') {
       steps {
         dir('CDDBAPI') {
-          {
             sh 'docker compose up -d'
-          }
         }
       }
     }
