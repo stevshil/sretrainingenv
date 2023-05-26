@@ -1,44 +1,43 @@
 pipeline {
   agent any
   stages {
-    stage('Clone') {
-      steps{
-        checkout([$class: 'GitSCM',
-          branches: [[name: '*/master']],
-          extensions: [
-            [$class: 'RelativeTargetDirectory', relativeTargetDir: '.']
-          ],
-          userRemoteConfigs: [[url: 'https://github.com/stevshil/CDDBAPI.git']]
-        ])
-      }
-    }
     stage('Build') {
       steps {
-        dir('.') {
-          withMaven (
-            maven: 'mvn363',
-            mavenLocalRepo: '.repository',
-          ){
-            sh 'mvn -Dmaven.test.skip=true clean package'
+        dir('CDDBAPI') {
+          {
+            sh 'docker compose up -d'
           }
         }
       }
     }
     stage('Test') {
       steps {
-        dir('.') {
-          withMaven (
-            maven: 'mvn363',
-            mavenLocalRepo: '.repository',
-          ){
-            sh 'mvn test'
-          }
-        }
+        sh '''
+          if curl http://localhost:8181/api/compactdiscs | grep -i coldplay
+          then
+            success=0
+          else
+            success=1
+          fi
+          exit $success
+        '''
       }
     }
     stage('Publish') {
       steps {
-        echo 'Publish to our software repository'
+        sh '''
+          echo 'Publish to our containers repository'
+          docker compose images
+          echo "docker compose push"
+        '''
+      }
+    }
+    stage('Clean Up') {
+      steps {
+        sh '''
+          docker compose kill
+          docker compose down --rmi all -v
+        '''
       }
     }
   }
