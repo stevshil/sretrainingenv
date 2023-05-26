@@ -1,18 +1,14 @@
 version: "3.9"
 services:
   jenkins:
-    # image: jenkins:2.60.3
-    image: steve353/jenkins:0.2
+    image: jenkins/jenkins:jdk11
     container_name: jenkins
     deploy:
       resources:
         limits: 
-          memory: 1G
+          memory: 5G
         reservations:
           memory: 500M
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     ports:
       - "8180:8080"
     volumes:
