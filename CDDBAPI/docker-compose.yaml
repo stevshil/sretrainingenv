@@ -1,0 +1,47 @@
+version: '3.0'
+services:
+   cddb:
+     container_name: cddb
+     build:
+       context: .
+       dockerfile: ./Build_Containers/Dockerfile-mysql
+     image: tpscd/cddb:1.0.0
+     ports:
+       - "3316:3306"
+     volumes:
+      - type: volume
+        source: cddb
+        target: /var/lib/mysql
+     restart: always
+     deploy:
+      resources:
+        limits: 
+          memory: 5G
+        reservations:
+          memory: 1G
+     environment:
+       MYSQL_ROOT_PASSWORD: secret123
+     command: --explicit_defaults_for_timestamp
+
+
+   cdapi:
+     container_name: cdapi
+     build:
+       context: .
+       dockerfile: ./Build_Containers/Dockerfile-cdapi
+     image: tpscd/cdapi:1.0.0
+     links:
+       - cddb:cddb
+     ports:
+       - "8181:8080"
+     restart: always
+     deploy:
+      resources:
+        limits: 
+          memory: 500M
+        reservations:
+          memory: 250M
+     depends_on:
+       - cddb
+volumes:
+  cddb:
