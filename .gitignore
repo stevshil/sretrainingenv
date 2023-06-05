@@ -1,2 +1,5 @@
 **/target
 **/m2repo
+**/nohup.out
+**NOTES.md
+.vscode
