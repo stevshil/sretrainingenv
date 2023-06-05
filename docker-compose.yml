@@ -1,7 +1,7 @@
 version: "3.9"
 services:
   jenkins:
-    image: jenkins/jenkins:jdk11
+    image: steve353/jenkins:k8s-v0.1
     container_name: jenkins
     deploy:
       resources:

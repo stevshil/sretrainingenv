@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        # runAsGroup: 1000
+      containers:
+        - image: steve353/jenkins:k8s-v0.2
+        # - image: jenkins/jenkins:lts
+          imagePullPolicy: IfNotPresent
+          name: jenkins
+          ports:
+          - containerPort: 8080
+            name: http-port
+          - containerPort: 50000
+            name: jnlp-port
+          env:
+          - name: CASC_JENKINS_CONFIG
+            value: /usercasc/casc.yaml
+          - name: JAVA_OPTS
+            value: -Djenkins.install.runSetupWizard=false
+          volumeMounts:
+          - mountPath: /var/jenkins_home
+            name: jenkins-data
+          - name: kubeconfig
+            mountPath: /var/jenkins_home/rootkube
+            readOnly: true
+          # - name: casc
+          #   mountPath: /usercasc
+          #   subPath: casc.yaml
+          #   readOnly: true
+          # - name: refs
+          #   mountPath: /usr/share/jenkins/ref
+          #   readOnly: true
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - "-c"
+                  - mkdir /var/jenkins_home/.kube && cp /var/jenkins_home/rootkube/ca.crt /var/jenkins_home/.kube && cp /var/jenkins_home/rootkube/client.crt /var/jenkins_home/.kube && cp /var/jenkins_home/rootkube/client.key /var/jenkins_home/.kube && cp /var/jenkins_home/rootkube/kubeconfig /var/jenkins_home/.kube/config && chmod 600 /var/jenkins_home/.kube/* && chown -R jenkins /var/jenkins_home/.kube
+      volumes:
+      - name: jenkins-data
+        persistentVolumeClaim:
+          claimName: jenkins-pvc
+      - name: kubeconfig
+        configMap:
+          name: kubeconfig
+      # - name: casc
+      #   configMap:
+      #     name: casc.yaml
+      # - name: refs
+      #   configMap:
+      #     name: refs
