@@ -60,3 +60,18 @@ $ curl -X POST -H 'Content-Type: application/json' localhost:8080/api/compactdis
 "price": 12.99
 }'
 ```
+
+Adding a CD with tracks;
+```
+$ curl -X POST -H 'Content-Type: application/json' localhost:8080/api/compactdiscs -d '
+{
+    "title": "Steve Does That",
+    "artist": "Steve",
+    "tracks": 2,
+    "price": 20.99,
+    "trackTitles": [
+        "Baa Baa Baby", 
+        "Baby Ewe Love Me"
+    ]
+}'
+```

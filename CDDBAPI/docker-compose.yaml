@@ -28,7 +28,7 @@ services:
      container_name: cdapi
      build:
        context: .
-       dockerfile: ./Build_Containers/Dockerfile-cdapi
+       dockerfile: ./Java/Dockerfile-cdapi
      image: tpscd/cdapi:1.0.0
      links:
        - cddb:cddb

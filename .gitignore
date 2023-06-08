@@ -3,3 +3,7 @@
 **/nohup.out
 **NOTES.md
 .vscode
+**/virtenv*
+**/__pycache__
+**/pywin
+**/pylin
