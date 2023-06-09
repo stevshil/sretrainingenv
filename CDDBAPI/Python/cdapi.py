@@ -47,7 +47,7 @@ if __name__ == "__main__":
             print("DEBUG mode on")
             debugon=True
             try:
-                app.run(host='0.0.0.0',port=5001,debug=True)
+                app.run(host='0.0.0.0',port=8080,debug=True)
             except Exception as e:
                 print(str(e))
                 pass
@@ -55,4 +55,4 @@ if __name__ == "__main__":
         print(str(e))
         if debugon == False:
             print("PRODUCTION mode on")
-            serve(app, host='0.0.0.0', port=5001)
+            serve(app, host='0.0.0.0', port=8080)

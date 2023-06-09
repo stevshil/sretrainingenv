@@ -2,68 +2,115 @@
 
 This application is designed for use in DevOps and SRE training.
 
-The application is a simple CD Database application using Spring Boot with a MySQL Database backend.  The current state as of March 2021 is that there is an API server and MySQL database.  The API allows for;
-* Full listing
+The application is a simple personal CD Database application using Python Flask with a MySQL Database backend, and a separate Python script that will retrieve CD information from Deezer API to populate tracks for a given CD information.
+
+The Python Flask API allows for;
+* Full listing of the CDs in the database
 * Listing a specific CD by id
 * Adding CDs
+* Updating CDs
 * Deleting CDs
 
-A Jenkinsfile is supplied to enable the use of pipelines through Jenkins Blue Ocean, where by providing this GIT repo will automatically build the pipeline.
+## The components
 
-## Setting up Jenkins
+The following components are created as containers:
 
-For Jenkins to understand the pipeline you will need to add the following plugins and server configurations.
+* [MySQL Database](Database/Dockerfile)
+  * The initial Database set up
+  * Loads top level CD data, but not the tracks
+* [Python API](Python/Dockerfile)
+  * The Web API service that communicates with the DB
+* [Python DB Updater](Python/Dockerfile-dbupdate)
+  * You should run this container after initial setup
+  * This container is used to load the tracks for each CD
+  * It also updates the number of tracks in the compact_discs table
+  * As part of the system this should be used as a chronological task to check the tracks are up to date.
 
-### Plugins and configurations
+### Python container environment files
 
-Plugins:
+If you change the database configuration, see **[.env](Python/.envdocker)** for format and values, you should map a folder on your system containing a file called .env to **/app/env** in the container.
 
-* Maven Integration
-  - Jenkins automated installation ID = **maven-plugin**
-  - Also installs **javadoc**.
-* Pipeline Maven Integration
-  - Jenkins automated installation ID = **pipeline-maven**
-  - Required for the withMaven() in the Jenkinsfile
-    - Also installs
-      - H2 API
-      - Config File Provider
+e.g.
+```
+docker run -d -v $HOME/myenv:/app/env ....
+```
 
-Global Tool Configurations:
- * Add a Maven installation
-   - Name: mvn363
-     - This name aligns with the Jenkinsfile in the repo
-   - Install from Apache version 3.6.3
-   - Save
+Where **$HOME/myenv** contains the **.env** file.
 
-### Adding the GIT repo
+## Building and Running
 
-Click the **Create a new Pipeline** button when it pops up.
+The system is built to use Docker as we wish to use microservices and scalability.  This application may have a web frontend applied.  The whole system can be ran locally on system running Docker to test using **docker compose**.
 
-Select GIT not GitHub as the connection to the repository and use your HTTPS connection.
+The system is also set up to run in Kubernetes and also built using a Jenkins pipeline.
 
-Ignore the login unless your repo is private, this one is not.
+### Building and running on a Docker machine
 
-Click **Create Pipeline**.
+To use this method you will need to have **docker compose** installed.
+
+- Change to the **CDDBAPI** directory
+- Use the following **docker compose** command to start
+  ```
+  docker compose up -d
+  ```
+  This will build and launch all containers.
+  
+#### Rebuild container
+
+If you make a change to any of your code and need to rebuild the containers, do the following:
+
+```
+docker compose build
+```
+
+The above rebuilds any changed containers
+
+For a specific container:
+```
+docker compose build cdapi
+```
+
+The above will rebuild only the **cdapi** container.
+
+#### Build and run in Jenkins
+
+TBD
+
+#### Run in Kubernetes
+
+TBD
 
 ## The API
 
-Listing all CDs
+### Listing all CDs
+
 ```
-$ curl -H 'Content-Type: application/json' localhost:8080/api/compactdiscs
+$ curl -H 'Content-Type: application/json' localhost:8080/api/cds
 ```
 
-Adding a CD without tracks;
+### List a CD
+
 ```
-$ curl -X POST -H 'Content-Type: application/json' localhost:8080/api/compactdiscs -d '{
+$ curl -H 'Content-Type: applicaiton/json' localhost:8080/api/cds/1
+```
+
+### Adding a CD without tracks
+
+```
+$ curl -X POST -H 'Content-Type: application/json' localhost:8080/api/cds -d '{
 "title": "This is Steve",
 "artists": "Me",
 "price": 12.99
 }'
 ```
 
-Adding a CD with tracks;
+Returns:
 ```
-$ curl -X POST -H 'Content-Type: application/json' localhost:8080/api/compactdiscs -d '
+{'status': 'OK', 'ID':2, 'firstTrackId':}
+```
+
+### Adding a CD with tracks
+```
+$ curl -X POST -H 'Content-Type: application/json' localhost:8080/api/cds -d '
 {
     "title": "Steve Does That",
     "artist": "Steve",
@@ -74,4 +121,31 @@ $ curl -X POST -H 'Content-Type: application/json' localhost:8080/api/compactdis
         "Baby Ewe Love Me"
     ]
 }'
+```
+
+Returns:
+
+```
+{'status': 'OK', 'ID':2, 'firstTrackId':23}
+```
+
+### Updating CD
+
+```
+$ curl -X PUT -H 'Content-Type: application/json' localhost:8080/api/cds/2 -d '
+{
+    "title": "Steve Does That",
+    "artist": "Steve",
+    "tracks": 2,
+    "price": 20.99,
+    "trackTitles": [
+        { { 'currentTitle': 'Baa Baa Baby', 'newTitle': 'Born to be Ewe' },
+          { 'currentTitle': 'Baby Ewe Love Me', 'Ewe Left Me Just When I Needed Ewe Moss': newtitlename }
+    ]
+}'
+```
+
+Returns:
+```
+{"status": "Tracks updated OK"}
 ```

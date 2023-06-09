@@ -3,8 +3,8 @@ services:
    cddb:
      container_name: cddb
      build:
-       context: .
-       dockerfile: ./Build_Containers/Dockerfile-mysql
+       context: ./Database
+       dockerfile: Dockerfile
      image: tpscd/cddb:1.0.0
      ports:
        - "3316:3306"
@@ -23,12 +23,11 @@ services:
        MYSQL_ROOT_PASSWORD: secret123
      command: --explicit_defaults_for_timestamp
 
-
    cdapi:
      container_name: cdapi
      build:
-       context: .
-       dockerfile: ./Java/Dockerfile-cdapi
+       context: ./Python
+       dockerfile: Dockerfile
      image: tpscd/cdapi:1.0.0
      links:
        - cddb:cddb
@@ -43,5 +42,17 @@ services:
           memory: 250M
      depends_on:
        - cddb
+
+  dbupdate:
+    container_name: cddbupdate
+    build:
+      context: ./Python
+      dockerfile: Dockerfile-dbupdate
+    image: tpscd/cdapi:1.0.0
+    links:
+      - cddb:cddb
+    depends_on:
+      - cddb
+    
 volumes:
   cddb:

@@ -125,8 +125,26 @@ for tracks in dbcds:
         # print(insert_data)
         if len(insert_data) > 0:
             mycursor.execute(sqlstr, insert_data)
+    
+    # Update track numbers in cds
+    # updateSQL="UPDATE compact_discs SET tracks="+len()
+    print("Calculating track totals")
+    numTracksSQL="SELECT count(cd_id) from tracks WHERE cd_id="+str(tracks['cd_id'])
+    mycursor2 = mydb.cursor()
+    mycursor2.execute(numTracksSQL)
+    print(numTracksSQL)
+    myresult = mycursor2.fetchone()
+
+    updateSQL="UPDATE compact_discs SET tracks="+str(myresult[0])+" WHERE id="+str(tracks['cd_id'])
+    mycursor3=mydb.cursor()
+    mycursor3.execute(updateSQL)
+
     mydb.commit()
+    
     mycursor.close()
+    mycursor2.close()
+    mycursor3.close()
+
         
 mydb.close()
 print("Finished")

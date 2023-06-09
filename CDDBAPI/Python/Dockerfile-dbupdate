@@ -1,0 +1,9 @@
+FROM python:3.12-rc-alpine
+RUN mkdir /app; useradd -m cdapi; ln -s /app/env/.env /app/.env
+COPY downloadcd.py requirements.txt /app
+RUN pip install -r /app/requirements.txt
+COPY .envdocker /app/env/.env
+VOLUME /app/env
+WORKDIR /app
+USER cdapi
+ENTRYPOINT [ "./downloadcd.py" ]
