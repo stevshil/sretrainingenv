@@ -17,20 +17,43 @@ deezercdinfo={}
 print("DB connection")
 print("HOST: "+(os.environ['DBSRV'])[0:-5])
 print("PORT: "+(os.environ['DBSRV'])[-4:])
-mydb=myconn.connect(
-    host=(os.environ['DBSRV'])[0:-5],
-    user=os.environ['DBUSER'],
-    password=os.environ['DBPASS'],
-    port=(os.environ['DBSRV'])[-4:],
-    database="tpscd"
-)
+connect_counter=0
 
-# Get artist
-print("Getting CD info")
-mycursor = mydb.cursor()
-sql="SELECT id,artist,title FROM compact_discs;"
-mycursor.execute(sql)
-myresult = mycursor.fetchall()
+mydb=False
+while not mydb:
+    try:
+        mydb=myconn.connect(
+            host=(os.environ['DBSRV'])[0:-5],
+            user=os.environ['DBUSER'],
+            password=os.environ['DBPASS'],
+            port=(os.environ['DBSRV'])[-4:],
+            database="tpscd"
+        )
+    except:
+        time.sleep(15)
+        connect_counter=connect_counter+1
+        if connect_counter == 10:
+            print("Timed out waiting for Database server")
+            sys.exit(1)
+
+# Wait for DB connection
+query_counter=0
+myresult=False
+while not myresult:
+    # Get artist
+    try:
+        print("Getting CD info")
+        mycursor = mydb.cursor()
+        sql="SELECT id,artist,title FROM compact_discs;"
+        mycursor.execute(sql)
+        myresult = mycursor.fetchall()
+    except:
+        time.sleep(15)
+        query_counter=query_counter+1
+        if query_counter == 10:
+            print("Unable to connect to database")
+            print("Please re-run")
+            sys.exit(2)
 
 print("Creating CD array")
 for cd_id,artist,title in myresult:
