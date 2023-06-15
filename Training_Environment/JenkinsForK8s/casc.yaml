@@ -104,4 +104,5 @@ tool:
     globalSettingsProvider: "standard"
     settingsProvider: "standard"
 jobs:
-  - file: /usr/share/jenkins/ref/seedjob.groovy
+  - file: /usr/share/jenkins/ref/simplejob.groovy
+  - file: /usr/share/jenkins/ref/dockerjob.groovy

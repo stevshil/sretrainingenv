@@ -1,7 +1,7 @@
 // seedjob.groovy
 
 // create an array with pipeline names
-pipelines = ["Example Job"]
+pipelines = ["Simple Job"]
 
 // iterate through the array and call the create_pipeline method
 pipelines.each { pipeline ->
@@ -30,18 +30,6 @@ pipeline {
             command:
             - cat
             tty: true
-          # - name: docker
-          #  image: docker:latest
-          #  command:
-          #  - cat
-          #  tty: true
-          #  volumeMounts:
-          #   - mountPath: /var/run/docker.sock
-          #     name: docker-sock
-          volumes:
-          - name: docker-sock
-            hostPath:
-              path: /var/run/docker.sock
         '''
     }
   }

@@ -11,6 +11,7 @@ You will need a virtual machine running Ubuntu, or Debian before continuing this
     - Contains the shell script **setup.sh** that will install and run the Kubernetes system
     - Contains the YAML files used by the **setup.sh** script to launch the Jenkins service in Kubernetes and configures it ready for K8s
 - Make the **setup.sh** file executable
+- Make sure that the user that will be running the **setup.sh** script has **sudo** rights without needing a **password**
 
 We use a specific Jenkins Docker image that has been pre-configured to work with Kubernetes and perform Docker-in-Docker builds.  The Docker image also contains an example job.  Container = **steve353/jenkins:k8s-v0.2**.
 

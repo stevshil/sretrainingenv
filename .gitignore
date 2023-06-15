@@ -7,3 +7,5 @@
 **/__pycache__
 **/pywin
 **/pylin
+**/domain.crt
+**/domain.key

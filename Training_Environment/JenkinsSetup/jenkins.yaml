@@ -18,7 +18,7 @@ spec:
         runAsUser: 1000
         # runAsGroup: 1000
       containers:
-        - image: steve353/jenkins:k8s-v0.2
+        - image: steve353/jenkins:k8s-v0.3
         # - image: jenkins/jenkins:lts
           imagePullPolicy: IfNotPresent
           name: jenkins
@@ -51,7 +51,7 @@ spec:
                 command:
                   - /bin/sh
                   - "-c"
-                  - mkdir /var/jenkins_home/.kube && cp /var/jenkins_home/rootkube/ca.crt /var/jenkins_home/.kube && cp /var/jenkins_home/rootkube/client.crt /var/jenkins_home/.kube && cp /var/jenkins_home/rootkube/client.key /var/jenkins_home/.kube && cp /var/jenkins_home/rootkube/kubeconfig /var/jenkins_home/.kube/config && chmod 600 /var/jenkins_home/.kube/* && chown -R jenkins /var/jenkins_home/.kube
+                  - "mkdir /var/jenkins_home/.kube ; cp /var/jenkins_home/rootkube/ca.crt /var/jenkins_home/.kube ; cp /var/jenkins_home/rootkube/client.crt /var/jenkins_home/.kube ; cp /var/jenkins_home/rootkube/client.key /var/jenkins_home/.kube ; cp /var/jenkins_home/rootkube/kubeconfig /var/jenkins_home/.kube/config ; chmod 600 /var/jenkins_home/.kube/* ; chown -R jenkins /var/jenkins_home/.kube"
       volumes:
       - name: jenkins-data
         persistentVolumeClaim:

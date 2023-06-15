@@ -7,7 +7,8 @@ ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false
 ENV CASC_JENKINS_CONFIG /usercasc/casc.yaml
 # Install required plugins
 COPY jenkinsplugins.txt /usr/share/jenkins/ref/plugins.txt
-COPY seedjob.groovy /usr/share/jenkins/ref/seedjob.groovy
+COPY simplejob.groovy /usr/share/jenkins/ref/simplejob.groovy
+COPY dockerjob.groovy /usr/share/jenkins/ref/dockerjob.groovy
 RUN jenkins-plugin-cli -f /usr/share/jenkins/ref/plugins.txt
 # Set up URL
 COPY casc.yaml /usercasc/casc.yaml

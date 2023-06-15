@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docker-registry
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: docker-registry
+  name: registry-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 30Gi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry
+  namespace: docker-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registry
+  template:
+    metadata:
+      labels:
+        app: registry
+    spec:
+      containers:
+        - image: registry:2.8
+          imagePullPolicy: IfNotPresent
+          name: registry
+          ports:
+          - containerPort: 5000
+            name: registry-port
+          env:
+          - name: REGISTRY_HTTP_TLS_CERTIFICATE
+            value: /certs/domain.crt
+          - name: REGISTRY_HTTP_TLS_KEY
+            value: /certs/domain.key
+          volumeMounts:
+          - mountPath: /var/lib/registry
+            name: registry-data
+          - mountPath: /certs
+            name: regcerts
+            readOnly: true
+      volumes:
+      - name: registry-data
+        persistentVolumeClaim:
+          claimName: registry-pvc
+      - name: regcerts
+        configMap:
+          name: regcerts
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: docker-registry
+  name: registry
+spec:
+  type: NodePort
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30001
+  selector:
+    app: registry
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: docker-registry
+  name: registry-int
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5000
+      targetPort: 5000
+  selector:
+    app: registry
+
+---
+
+# Use with minikube tunnel --bind-address=VMRealIP
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: docker-registry
+  name: registry-ext
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5000
+    targetPort: 5000
+  selector:
+    app: registry

@@ -1,7 +1,7 @@
 // seedjob.groovy
 
 // create an array with pipeline names
-pipelines = ["Example Job"]
+pipelines = ["Docker Pull Push Job"]
 
 // iterate through the array and call the create_pipeline method
 pipelines.each { pipeline ->
@@ -48,8 +48,8 @@ pipeline {
             echo "curling registry"
             apk add curl
             curl -k https://registry-int.docker-registry.svc.cluster.local:5000/v2/
-            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print $2}'`
-            echo "REGISTRY IP: $reg"
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            echo "REGISTRY IP: \$reg"
           '''
         }
       }
@@ -70,8 +70,8 @@ pipeline {
           sh '''
             echo "Tagging for private registry"
             # Works if you use cluster-ip for service - agent containers not using DNS
-            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print $2}'`
-            docker tag busybox $reg:5000/busybox:latest
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            docker tag busybox \$reg:5000/busybox:latest
           '''
         }
       }
@@ -81,8 +81,8 @@ pipeline {
         container('docker') {
           sh '''
             echo "Pushing to private registry"
-            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print $2}'`
-            docker push $reg:5000/busybox:latest
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            docker push \$reg:5000/busybox:latest
           '''
         }
       }
