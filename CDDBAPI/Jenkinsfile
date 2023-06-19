@@ -46,9 +46,9 @@ pipeline {
           sh '''
             cd CDDBAPI/Python
             reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
-            if ! docker build registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            if ! docker build -t registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} .
             then
-              if ! docker build \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              if ! docker build -t \${reg}:5000/devapi:v\${BUILD_NUMBER} .
               then
                 echo "[FAILED]"
                 exit 1
@@ -64,9 +64,9 @@ pipeline {
           sh '''
             cd CDDBAPI/Python
             reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
-            if ! docker build -f Dockerfile-dbupdate registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+            if ! docker build -f Dockerfile-dbupdate -t registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} .
             then
-              if ! docker build -f Dockerfile-dbupdate \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              if ! docker build -f Dockerfile-dbupdate -t \${reg}:5000/devdbupdater:v\${BUILD_NUMBER} .
               then
                 echo "[FAILED]"
                 exit 1
@@ -161,6 +161,7 @@ DBSRV=cddb:3306" >denv/.env
               docker rm -f registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
               docker rm -f \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
               echo "FAILED: \${pushfail}"
+              exit \${pushfail}
             fi
           '''
         }
