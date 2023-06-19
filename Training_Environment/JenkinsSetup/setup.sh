@@ -30,7 +30,7 @@ if [[ ! -e /usr/local/bin/kubectl ]]
 then
     echo "[INSTALL] kubectl"
     sudo curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    install kubectl /usr/local/bin/kubectl
+    sudo install kubectl /usr/local/bin/kubectl
 fi
 
 echo "[CHECK] if minikube is installed"
@@ -38,7 +38,7 @@ if [[ ! -e /usr/local/bin/minikube ]]
 then
     echo "[INSTALL] minikube"
     sudo curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-    install minikube-linux-amd64 /usr/local/bin/minikube
+    sudo install minikube-linux-amd64 /usr/local/bin/minikube
 fi
 
 echo "[START] minikube"
@@ -116,11 +116,11 @@ then
     kubectl create configmap casc -n jenkins \
         --from-file=configfiles/casc.yaml
 fi
-if ! (kubectl get configmap -n jenkins | grep refs) >/dev/null 2>&1
-then
-    kubectl create configmap refs -n jenkins \
-        --from-file=configfiles/seedjob.groovy
-fi
+# if ! (kubectl get configmap -n jenkins | grep refs) >/dev/null 2>&1
+# then
+#     kubectl create configmap refs -n jenkins \
+#         --from-file=configfiles/seedjob.groovy
+# fi
 
 echo "[START] tunnel"
 nohup minikube tunnel --bind-address=${USEIP} &
@@ -169,3 +169,5 @@ fi
 # helm repo add twuni https://helm.twun.io
 # echo "[INSTALL] Docker Registry"
 # helm install -f registry-chart.yaml docker-registry --namespace docker-registry twuni/docker-registry
+
+echo "Server IP: $(ip a | grep -A3 enp0s3 | grep 'inet ' | awk '{print $2}' | sed 's,/.*$,,')"

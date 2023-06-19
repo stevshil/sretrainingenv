@@ -28,8 +28,8 @@ spec:
           - containerPort: 50000
             name: jnlp-port
           env:
-          - name: CASC_JENKINS_CONFIG
-            value: /usercasc/casc.yaml
+          # - name: CASC_JENKINS_CONFIG
+          #   value: /var/tmp/casc.yaml
           - name: JAVA_OPTS
             value: -Djenkins.install.runSetupWizard=false
           volumeMounts:
@@ -38,10 +38,10 @@ spec:
           - name: kubeconfig
             mountPath: /var/jenkins_home/rootkube
             readOnly: true
-          # - name: casc
-          #   mountPath: /usercasc
-          #   subPath: casc.yaml
-          #   readOnly: true
+          - name: casc
+            mountPath: /var/tmp/casc.yaml
+            subPath: casc.yaml
+            readOnly: true
           # - name: refs
           #   mountPath: /usr/share/jenkins/ref
           #   readOnly: true
@@ -59,9 +59,9 @@ spec:
       - name: kubeconfig
         configMap:
           name: kubeconfig
-      # - name: casc
-      #   configMap:
-      #     name: casc.yaml
+      - name: casc
+        configMap:
+          name: casc
       # - name: refs
       #   configMap:
       #     name: refs

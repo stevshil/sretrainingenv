@@ -6,19 +6,14 @@ pipeline {
         kind: Pod
         spec:
           containers:
-          - name: general
-            image: busybox:stable
+          - name: docker
+            image: docker:latest
             command:
             - cat
             tty: true
-          - name: docker
-           image: docker:latest
-           command:
-           - cat
-           tty: true
-           volumeMounts:
-            - mountPath: /var/run/docker.sock
-              name: docker-sock
+            volumeMounts:
+             - mountPath: /var/run/docker.sock
+               name: docker-sock
           volumes:
           - name: docker-sock
             hostPath:
@@ -29,39 +24,146 @@ pipeline {
   stages {
     stage('Build Database') {
       steps {
-        container('docker')
-        dir('CDDBAPI/Database') {
-            sh 'docker build -t '
+        container('docker') {
+          sh '''
+            cd CDDBAPI/Database
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            if ! docker build -t registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} .
+            then
+              if ! docker build -t \${reg}:5000/devdb:v\${BUILD_NUMBER} .
+              then
+                echo "[FAILED]"
+                exit 1
+              fi
+            fi
+          '''
         }
       }
     }
-    stage('Test') {
+    stage('Build API') {
       steps {
-        sh '''
-          if curl http://localhost:8181/api/compactdiscs | grep -i coldplay
-          then
-            success=0
-          else
-            success=1
-          fi
-          exit $success
-        '''
+        container('docker') {
+          sh '''
+            cd CDDBAPI/Python
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            if ! docker build registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            then
+              if ! docker build \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              then
+                echo "[FAILED]"
+                exit 1
+              fi
+            fi
+          '''
+        }
       }
     }
-    stage('Publish') {
+    stage('Build DB Updater') {
       steps {
-        sh '''
-          echo 'Publish to our containers repository'
-          docker compose images
-          echo "docker compose push"
-        '''
+        container('docker') {
+          sh '''
+            cd CDDBAPI/Python
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            if ! docker build -f Dockerfile-dbupdate registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+            then
+              if ! docker build -f Dockerfile-dbupdate \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              then
+                echo "[FAILED]"
+                exit 1
+              fi
+            fi
+          '''
+        }
       }
     }
-    stage('Clean Up') {
+    stage('Launch Test Environment') {
+      steps{
+        container('docker') {
+          sh '''
+            if ! docker run --rm -d --name devdb-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
+            then
+              if ! docker run --rm -d --name devdb-v\${BUILD_NUMBER} \${reg}:5000/devdb:v\${BUILD_NUMBER}
+              then
+                exit 2
+              fi
+            fi
+
+            mkdir denv
+            echo "DBUSER=root
+DBPASS=secret123
+DBSRV=cddb:3306" >denv/.env
+
+            if ! docker run --rm -d -v \$PWD/denv:/app/env --link cddb:devdb-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            then
+              if ! docker run --rm -d -v \$PWD/denv:/app/env --link cddb:devdb-v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              then
+                docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+                docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+                exit 2
+              fi
+            fi
+            if ! docker run --rm -d -v \$PWD/denv:/app/env --link cddb:devdb-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+            then
+              if ! docker run --rm -d -v \$PWD/denv:/app/env --link cddb:devdb-v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              then
+                docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+                docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+                docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+                docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              fi
+            fi
+          '''
+        }
+      }
+    }
+    stage('Run tests') {
       steps {
-        sh '''
-          docker compose down --rmi all -v
-        '''
+        container('docker') {
+          sh '''
+            echo "Doing some tests"
+          '''
+        }
+      }
+    }
+    stage('Publish images') {
+      steps {
+        container('docker') {
+          sh '''
+            pushfail=0
+            if ! docker push registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
+            then
+              if ! docker push \${reg}:5000/devdb:v\${BUILD_NUMBER}
+              then
+                pushfail=1
+              fi
+            fi
+            if ! docker push registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            then
+              if ! docker push \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              then
+                pushfail=2
+              fi
+            fi
+            if ! docker push registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+            then
+              if ! docker push \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              then
+                pushfail=3
+              fi
+            fi
+
+            if (( pushfail > 0 ))
+            then
+              docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+              docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+              docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              docker rm -f registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+              docker rm -f \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              echo "FAILED: \${pushfail}"
+            fi
+          '''
+        }
       }
     }
   }
