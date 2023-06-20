@@ -104,4 +104,23 @@ tool:
     globalSettingsProvider: "standard"
     settingsProvider: "standard"
 jobs:
-  - file: /usr/share/jenkins/ref/seedjob.groovy
+  - file: /usr/share/jenkins/ref/simplejob.groovy
+  - file: /usr/share/jenkins/ref/dockerjob.groovy
+  - script: >
+      pipelineJob('job-dsl-plugin') {
+        displayName('Application_Dev')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/stevshil/sretrainingenv.git')
+                }
+                branch('*/main')
+              }
+            }
+            scriptPath("CDDBAPI/Jenkinsfile")
+            lightweight()
+          }
+        }
+      }

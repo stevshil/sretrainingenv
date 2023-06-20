@@ -1,4 +1,4 @@
 #!/bin/bash
 
-kill $(ps -ef | grep tunnel | awk '{print $2}')
+kill $(ps -ef | grep tunnel | grep -v grep | awk '{print $2}')
 minikube delete

@@ -28,8 +28,8 @@ spec:
           - containerPort: 50000
             name: jnlp-port
           env:
-          # - name: CASC_JENKINS_CONFIG
-          #   value: /var/tmp/casc.yaml
+          - name: CASC_JENKINS_CONFIG
+            value: /var/tmp/casc.yaml
           - name: JAVA_OPTS
             value: -Djenkins.install.runSetupWizard=false
           volumeMounts:
