@@ -134,6 +134,7 @@ DBSRV=cddb:3306" >denv/.env
             pushfail=0
             if ! docker push registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
             then
+              docker tag registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} \${reg}:5000/devdb:v\${BUILD_NUMBER}
               if ! docker push \${reg}:5000/devdb:v\${BUILD_NUMBER}
               then
                 pushfail=1
@@ -141,6 +142,7 @@ DBSRV=cddb:3306" >denv/.env
             fi
             if ! docker push registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
             then
+              docker tag registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
               if ! docker push \${reg}:5000/devapi:v\${BUILD_NUMBER}
               then
                 pushfail=2
@@ -148,6 +150,7 @@ DBSRV=cddb:3306" >denv/.env
             fi
             if ! docker push registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
             then
+              docker tag registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
               if ! docker push \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
               then
                 pushfail=3
