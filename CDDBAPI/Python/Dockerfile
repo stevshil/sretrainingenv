@@ -5,6 +5,7 @@ RUN apt-get -y update; apt-get -y install build-essential libssl-dev libffi-dev
 COPY *.py requirements.txt /app
 COPY .envdocker /app/env/.env
 RUN pip install -r /app/requirements.txt
+RUN chmod a+x /app/cdapi.py
 VOLUME /app/env
 EXPOSE 8080
 WORKDIR /app
