@@ -132,12 +132,15 @@ DBSRV=cddb:3306" >denv/.env
           sh '''
             reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
             pushfail=0
+            ippush=0
             if ! docker push registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
             then
               docker tag registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} \${reg}:5000/devdb:v\${BUILD_NUMBER}
               if ! docker push \${reg}:5000/devdb:v\${BUILD_NUMBER}
               then
                 pushfail=1
+              else
+                ippush=1
               fi
             fi
             if ! docker push registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
@@ -157,21 +160,29 @@ DBSRV=cddb:3306" >denv/.env
               fi
             fi
 
-            if (( pushfail > 0 ))
+            echo "Clean up"
+            docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+            docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+            docker rm -f registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+            docker rm -f \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+            if [ "$ippush" -eq "0" ]
             then
-              docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-              docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
-              docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-              docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
-              docker rm -f registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
-              docker rm -f \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
-              docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
-              docker rmi \${reg}:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
-              echo "FAILED: \${pushfail}"
-              exit \${pushfail}
-            else
-              docker rmi 
+              for imgs in registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+              do
+                docker rmi \$imgs
+              done
             fi
+            if [ "$ippush" -gt "0" ]
+            then
+              for imgs in \${reg}:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              do
+                docker rmi \$imgs
+              done
+            fi
+            echo "FAILED: \${pushfail}"
+            exit \${pushfail}
           '''
         }
       }
