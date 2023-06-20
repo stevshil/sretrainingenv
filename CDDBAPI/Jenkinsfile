@@ -80,6 +80,7 @@ pipeline {
       steps{
         container('docker') {
           sh '''
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
             if ! docker run --rm -d --name devdb-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
             then
               if ! docker run --rm -d --name devdb-v\${BUILD_NUMBER} \${reg}:5000/devdb:v\${BUILD_NUMBER}
@@ -129,6 +130,7 @@ DBSRV=cddb:3306" >denv/.env
       steps {
         container('docker') {
           sh '''
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
             pushfail=0
             if ! docker push registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
             then
