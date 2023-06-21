@@ -94,23 +94,26 @@ pipeline {
 DBPASS=secret123
 DBSRV=cddb:3306" >denv/.env
 
-            if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb --name devapi-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
             then
-              if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb --name devapi-v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
               then
-                docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-                docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+                docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
+                docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+                docker rmi registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+                docker rm -f devdb-v\${BUILD_NUMBER}
                 exit 2
               fi
             fi
-            if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+            if ! docker run --rm -d -v ./denv:/app/env -P --link devdb-v\${BUILD_NUMBER}:cddb registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
             then
-              if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              if ! docker run --rm -d -v ./denv:/app/env -P --link devdb-v\${BUILD_NUMBER}:cddb \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
               then
-                docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-                docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
-                docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-                docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
+                docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
+                docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+                docker rmi registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+                docker rm -f devdb-v\${BUILD_NUMBER}
+                docker rm -f devapi-v\${BUILD_NUMBER}
               fi
             fi
           '''
@@ -121,7 +124,29 @@ DBSRV=cddb:3306" >denv/.env
       steps {
         container('docker') {
           sh '''
+            testpass=0
+            testfail=0
             echo "Doing some tests"
+            # Get API port for testing
+            apiport=\$(docker port devapi-v\${BUILD_NUMBER} | grep '8080/tcp' | sed 's/^.*://')
+            apiip=\$( docker inspect cdapi | grep IPAddress | tail -1 | awk '{print \$2}' | sed 's/[",]//g') )
+            if curl \${apiip}:\${apiport} 2>/dev/null | grep Hello  >/dev/null 2>&1
+            then
+              echo "[PASS] Top URL"
+              testpass=1
+            else
+              echo "[FAIL] Top URL"
+              testfail=1
+            fi
+
+            if curl \${apiip}:\${apiport}/api/cds 2>/dev/null | grep Invisible >/dev/null 2>&1
+            then
+              echo "[PASS] CD listing"
+              testpass=2
+            else
+              echo "[FAIL] CD listing"
+              testfail=2
+            fi
           '''
         }
       }
@@ -161,22 +186,19 @@ DBSRV=cddb:3306" >denv/.env
             fi
 
             echo "Clean up"
-            docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-            docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
-            docker rm -f registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-            docker rm -f \${reg}:5000/devapi:v\${BUILD_NUMBER}
-            docker rm -f registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
-            docker rm -f \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+            docker rm -f devapi-v\${BUILD_NUMBER}
+            docker rm -f devdb-v\${BUILD_NUMBER}
+            docker rm -f devdbupdater-v\${BUILD_NUMBER}
             if [ "$ippush" -eq "0" ]
             then
-              for imgs in registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+              for imgs in registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
               do
                 docker rmi \$imgs
               done
             fi
             if [ "$ippush" -gt "0" ]
             then
-              for imgs in \${reg}:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              for imgs in \${reg}:5000/devdb:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
               do
                 docker rmi \$imgs
               done
