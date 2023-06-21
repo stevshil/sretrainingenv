@@ -130,11 +130,22 @@ DBSRV=cddb:3306" >denv/.env
     stage('Run tests') {
       steps {
         container('docker') {
-          sh '''
+          sh '''#!/bin/bash
             testpass=0
             testfail=0
             echo "Doing some tests"
             # Get API port for testing
+            counter=0
+            # Allow time for container to start
+            while ! curl \${apiip}:\${apiport} 2>/dev/null | grep Hello  >/dev/null 2>&1
+            do
+              sleep 5
+              ((counter = counter +1))
+              if (( counter > 12 ))
+              then
+                break
+              fi
+            done
             docker ps -a | grep registry-int
             apiport=`docker port devapi-v\${BUILD_NUMBER} | grep '8080/tcp' | sed 's/^.*://'`
             apiip=`docker inspect devapi-v\${BUILD_NUMBER} | grep IPAddress | tail -1 | awk '{print \$2}' | sed 's/[",]//g'`

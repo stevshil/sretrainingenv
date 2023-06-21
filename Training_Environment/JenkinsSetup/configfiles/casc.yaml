@@ -124,3 +124,56 @@ jobs:
           }
         }
       }
+  - script: >
+      pipelineJob('Delete_Rouge_Containers') {
+        displayName('Delete_Rouge_Containers')
+        definition {
+          cps {
+            script("""
+              pipeline {
+                agent {
+                  kubernetes {
+                    yaml '''
+                      apiVersion: v1
+                      kind: Pod
+                      spec:
+                        containers:
+                        - name: docker
+                          image: docker:latest
+                          command:
+                          - cat
+                          tty: true
+                          volumeMounts:
+                          - mountPath: /var/run/docker.sock
+                            name: docker-sock
+                        volumes:
+                        - name: docker-sock
+                          hostPath:
+                            path: /var/run/docker.sock
+                    '''
+                  }
+                }
+                stages {
+                  stage('Delete Containers') {
+                    steps {
+                      container('docker') {
+                        sh '''
+                          for container in `docker ps -a | grep 'dev.*-v' | awk '{print \$NF}'`
+                          do
+                            docker rm -f \${container}
+                          done
+                          for image in `docker images | grep 'dev.*:v' | awk '{print \$3}'`
+                          do
+                            docker rmi \${image}
+                          done
+                        '''
+                      }
+                    }
+                  }
+                }
+              }
+            """)
+            sandbox()
+          }
+        }
+      }
