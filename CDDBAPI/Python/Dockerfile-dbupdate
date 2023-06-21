@@ -3,6 +3,7 @@ RUN mkdir /app; adduser -D cdapi; ln -s /app/env/.env /app/.env
 COPY downloadcd.py /app
 COPY reqdbupdate.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
+RUN chmod a+x /app/downloadcd.py
 COPY .envdocker /app/env/.env
 VOLUME /app/env
 WORKDIR /app
