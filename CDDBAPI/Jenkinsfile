@@ -105,6 +105,13 @@ DBSRV=cddb:3306" >denv/.env
                 exit 2
               fi
             fi
+            # Check api is up
+            if docker ps -a | grep registry-int | grep devapi | grep Exit
+            then
+              echo "Failed to start API"
+              docker logs devapi-v\${BUILD_NUMBER}
+              exit 2
+            fi
             if ! docker run --rm -d -v ./denv:/app/env -P --link devdb-v\${BUILD_NUMBER}:cddb registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
             then
               if ! docker run --rm -d -v ./denv:/app/env -P --link devdb-v\${BUILD_NUMBER}:cddb \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
@@ -128,7 +135,7 @@ DBSRV=cddb:3306" >denv/.env
             testfail=0
             echo "Doing some tests"
             # Get API port for testing
-            docker ps
+            docker ps -a | grep registry-int
             apiport=\$(docker port devapi-v\${BUILD_NUMBER} | grep '8080/tcp' | sed 's/^.*://')
             apiip=\$( docker inspect cdapi | grep IPAddress | tail -1 | awk '{print \$2}' | sed 's/[",]//g' )
             if curl \${apiip}:\${apiport} 2>/dev/null | grep Hello  >/dev/null 2>&1
