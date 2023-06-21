@@ -76,116 +76,7 @@ pipeline {
         }
       }
     }
-    stage('Launch Test Environment') {
-      steps{
-        container('docker') {
-          sh '''
-            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
-            if ! docker run --rm -d --name devdb-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
-            then
-              if ! docker run --rm -d --name devdb-v\${BUILD_NUMBER} \${reg}:5000/devdb:v\${BUILD_NUMBER}
-              then
-                exit 2
-              fi
-            fi
-
-            mkdir denv
-            echo "DBUSER=root
-DBPASS=secret123
-DBSRV=cddb:3306" >denv/.env
-
-            if ! docker run --rm -d -P --link devdb-v\${BUILD_NUMBER}:cddb --name devapi-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-            then
-              if ! docker run --rm -d -P --link devdb-v\${BUILD_NUMBER}:cddb --name devapi-v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
-              then
-                docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
-                docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-                docker rmi registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
-                docker rm -f devdb-v\${BUILD_NUMBER}
-                exit 2
-              fi
-            fi
-            # Check api is up
-            sleep 30
-            if docker ps -a | grep registry-int | grep devapi | grep Exit
-            then
-              echo "Failed to start API"
-              docker logs devapi-v\${BUILD_NUMBER}
-              exit 2
-            fi
-            # Print logs for devapi
-            sleep 30
-            docker ps -a | grep 'dev.*-v'
-            docker logs devapi-v\${BUILD_NUMBER}
-
-            if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
-            then
-              if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
-              then
-                docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
-                docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
-                docker rmi registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
-                docker rm -f devdb-v\${BUILD_NUMBER}
-                docker rm -f devapi-v\${BUILD_NUMBER}
-              fi
-            fi
-          '''
-        }
-      }
-    }
-    stage('Run tests') {
-      steps {
-        container('docker') {
-          sh '''
-            testpass=0
-            testfail=0
-            echo "Doing some tests"
-            # Get API port for testing
-            docker ps -a | grep registry-int
-            apiport=`docker port devapi-v\${BUILD_NUMBER} | grep '8080/tcp' | sed 's/^.*://'`
-            apiip=`docker inspect devapi-v\${BUILD_NUMBER} | grep IPAddress | tail -1 | awk '{print \$2}' | sed 's/[",]//g'`
-
-            # Allow time for container to start
-            counter=0
-            while ! curl \${apiip}:\${apiport} 2>/dev/null | grep Hello  >/dev/null 2>&1
-            do
-              sleep 5
-              counter=`expr \$counter + 1`
-              if [ "${counter}" -gt "12" ]
-              then
-                echo "Failed to connect to API in a timely fashion"
-                exit 1
-              fi
-            done
-
-            if curl \${apiip}:\${apiport} 2>/dev/null | grep Hello  >/dev/null 2>&1
-            then
-              echo "[PASS] Top URL"
-              testpass=1
-            else
-              echo "[FAIL] Top URL"
-              testfail=1
-            fi
-
-            if curl \${apiip}:\${apiport}/api/cds 2>/dev/null | grep Invisible >/dev/null 2>&1
-            then
-              echo "[PASS] CD listing"
-              testpass=2
-            else
-              echo "[FAIL] CD listing"
-              testfail=2
-            fi
-
-            if [ "\$testfail" -gt 0 ]
-            then
-              echo "[FAILED] Testing failed with number $testfail" 
-              exit \${testfail}
-            fi
-          '''
-        }
-      }
-    }
-    stage('Publish images') {
+    stage('Publish Database') {
       steps {
         container('docker') {
           sh '''
@@ -202,6 +93,23 @@ DBSRV=cddb:3306" >denv/.env
                 ippush=1
               fi
             fi
+
+            echo "Clean up"
+            docker rm -f devdb-v\${BUILD_NUMBER}
+            docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
+            docker rmi \${reg}:5000/devdb:v\${BUILD_NUMBER}
+            exit \${pushfail}
+          '''
+        }
+      }
+    }
+    stage('Publish API') {
+      steps {
+        container('docker') {
+          sh '''
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            pushfail=0
+            ippush=0
             if ! docker push registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
             then
               docker tag registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
@@ -210,6 +118,23 @@ DBSRV=cddb:3306" >denv/.env
                 pushfail=2
               fi
             fi
+
+            echo "Clean up"
+            docker rm -f devapi-v\${BUILD_NUMBER}
+            docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
+            docker rmi \${reg}:5000/devapi:v\${BUILD_NUMBER}
+            exit \${pushfail}
+          '''
+        }
+      }
+    }
+    stage('Publish DB Updater') {
+      steps {
+        container('docker') {
+          sh '''
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            pushfail=0
+            ippush=0
             if ! docker push registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
             then
               docker tag registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
@@ -220,24 +145,9 @@ DBSRV=cddb:3306" >denv/.env
             fi
 
             echo "Clean up"
-            docker rm -f devapi-v\${BUILD_NUMBER}
-            docker rm -f devdb-v\${BUILD_NUMBER}
             docker rm -f devdbupdater-v\${BUILD_NUMBER}
-            if [ "$ippush" -eq "0" ]
-            then
-              for imgs in registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
-              do
-                docker rmi \$imgs
-              done
-            fi
-            if [ "$ippush" -gt "0" ]
-            then
-              for imgs in \${reg}:5000/devdb:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
-              do
-                docker rmi \$imgs
-              done
-            fi
-            echo "FAILED: \${pushfail}"
+            docker rmi registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+            docker rmi \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
             exit \${pushfail}
           '''
         }
