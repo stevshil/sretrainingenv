@@ -114,6 +114,8 @@ DBSRV=cddb:3306" >denv/.env
               exit 2
             fi
             # Print logs for devapi
+            sleep 30
+            docker ps -a | grep 'dev.*-v'
             docker logs devapi-v\${BUILD_NUMBER}
 
             if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
