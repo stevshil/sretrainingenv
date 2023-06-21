@@ -106,6 +106,7 @@ DBSRV=cddb:3306" >denv/.env
               fi
             fi
             # Check api is up
+            sleep 30
             if docker ps -a | grep registry-int | grep devapi | grep Exit
             then
               echo "Failed to start API"
