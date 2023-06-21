@@ -82,22 +82,19 @@ pipeline {
           sh '''
             reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
             pushfail=0
-            ippush=0
             if ! docker push registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
             then
               docker tag registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} \${reg}:5000/devdb:v\${BUILD_NUMBER}
               if ! docker push \${reg}:5000/devdb:v\${BUILD_NUMBER}
               then
                 pushfail=1
-              else
-                ippush=1
               fi
             fi
 
             echo "Clean up"
-            docker rm -f devdb-v\${BUILD_NUMBER}
             docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
             docker rmi \${reg}:5000/devdb:v\${BUILD_NUMBER}
+            echo "[RESULT] $pushfail"
             exit \${pushfail}
           '''
         }
@@ -109,20 +106,19 @@ pipeline {
           sh '''
             reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
             pushfail=0
-            ippush=0
             if ! docker push registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
             then
               docker tag registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
               if ! docker push \${reg}:5000/devapi:v\${BUILD_NUMBER}
               then
-                pushfail=2
+                pushfail=1
               fi
             fi
 
             echo "Clean up"
-            docker rm -f devapi-v\${BUILD_NUMBER}
             docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
             docker rmi \${reg}:5000/devapi:v\${BUILD_NUMBER}
+            echo "[RESULT] $pushfail"
             exit \${pushfail}
           '''
         }
@@ -134,20 +130,19 @@ pipeline {
           sh '''
             reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
             pushfail=0
-            ippush=0
             if ! docker push registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
             then
               docker tag registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
               if ! docker push \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
               then
-                pushfail=3
+                pushfail=1
               fi
             fi
 
             echo "Clean up"
-            docker rm -f devdbupdater-v\${BUILD_NUMBER}
             docker rmi registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
             docker rmi \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+            echo "[RESULT] $pushfail"
             exit \${pushfail}
           '''
         }
