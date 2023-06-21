@@ -94,9 +94,9 @@ pipeline {
 DBPASS=secret123
 DBSRV=cddb:3306" >denv/.env
 
-            if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb --name devapi-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            if ! docker run --rm -d -P -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb --name devapi-v\${BUILD_NUMBER} registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
             then
-              if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb --name devapi-v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              if ! docker run --rm -d -P -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb --name devapi-v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
               then
                 docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
                 docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
@@ -112,9 +112,9 @@ DBSRV=cddb:3306" >denv/.env
               docker logs devapi-v\${BUILD_NUMBER}
               exit 2
             fi
-            if ! docker run --rm -d -v ./denv:/app/env -P --link devdb-v\${BUILD_NUMBER}:cddb registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+            if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
             then
-              if ! docker run --rm -d -v ./denv:/app/env -P --link devdb-v\${BUILD_NUMBER}:cddb \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              if ! docker run --rm -d -v ./denv:/app/env --link devdb-v\${BUILD_NUMBER}:cddb \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
               then
                 docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
                 docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
