@@ -137,7 +137,7 @@ DBSRV=cddb:3306" >denv/.env
             # Get API port for testing
             docker ps -a | grep registry-int
             apiport=\$(docker port devapi-v\${BUILD_NUMBER} | grep '8080/tcp' | sed 's/^.*://')
-            apiip=\$( docker inspect cdapi | grep IPAddress | tail -1 | awk '{print \$2}' | sed 's/[",]//g' )
+            apiip=\$( docker inspect devapi | grep IPAddress | tail -1 | awk '{print \$2}' | sed 's/[",]//g' )
             if curl \${apiip}:\${apiport} 2>/dev/null | grep Hello  >/dev/null 2>&1
             then
               echo "[PASS] Top URL"
