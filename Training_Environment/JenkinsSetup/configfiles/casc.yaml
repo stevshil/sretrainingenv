@@ -44,6 +44,13 @@ globalCredentialsConfiguration:
     providerFilter: "none"
     typeFilter: "none"
 security:
+  scriptApproval:
+    approvedSignatures:
+      - "staticMethod jenkins.model.Jenkins getInstance"
+      - "staticMethod org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval get"
+      - "method hudson.model.ItemGroup getItem java.lang.String"
+      - "method hudson.model.Job getLastSuccessfulBuild"
+      - "method hudson.model.Run getNumber"
   globalJobDslSecurityConfiguration:
     useScriptSecurity: false
   apiToken:
