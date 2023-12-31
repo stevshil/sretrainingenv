@@ -41,18 +41,25 @@ then
     sudo install minikube-linux-amd64 /usr/local/bin/minikube
 fi
 
-echo "[START] minikube"
-if ! minikube start --cpus 2 --memory 4g --driver docker
+# Need to do a check here to see if MINIKUBE IS RUNNING AND IF SO SKIP
+if ! kubectl get ns 2>/dev/null | grep kube-system
 then
-    if ! ps -ef | grep minikube | grep kube-apiserver >/dev/null 2>&1
+    echo "[START] minikube"
+    if ! minikube start --cpus 2 --memory 4g --driver docker
     then
-        echo "[RESTART] minikube"
-        minikube start
-    else
-        echo "[OK] minkube already running"
+        if ! ps -ef | grep minikube | grep kube-apiserver >/dev/null 2>&1
+        then
+            echo "[RESTART] minikube"
+            minikube start
+        else
+            echo "[OK] minkube already running"
+        fi
     fi
+else
+    echo "[OK] minkube already running"
 fi
 
+# If Ingress takes more than 6 minutes to start the pod this step will fail
 echo "[CHECKING] ingress"
 if minikube addons list | grep ingress | grep enabled >/dev/null 2>&1
 then
@@ -82,7 +89,7 @@ fi
 echo "[CREATE] Jenkins kubeconfig"
 # Add the .kube/config to a ConfigMap
 cp $HOME/.kube/config /tmp/kubeconfig
-sed -i 's,/home/k8s/.minikube,/var/jenkins_home/.kube,' /tmp/kubeconfig
+sed -i 's,/home/(k8s|sre)/.minikube,/var/jenkins_home/.kube,' /tmp/kubeconfig
 sed -i 's,profiles/minikube,,' /tmp/kubeconfig
 sed -i 's,//,/,' /tmp/kubeconfig
 
@@ -112,6 +119,13 @@ fi
 
 if ! (kubectl get configmap -n jenkins | grep casc) >/dev/null 2>&1
 then
+    # Create casc.yaml for Jenkins initial load
+    kubectl create configmap casc -n jenkins \
+        --from-file=configfiles/casc.yaml
+else
+    echo "[RECONFIGURE] Jenkins CASC ConfigMap"
+    kubectl delete configmap casc -n jenkins
+    sleep 5
     # Create casc.yaml for Jenkins initial load
     kubectl create configmap casc -n jenkins \
         --from-file=configfiles/casc.yaml

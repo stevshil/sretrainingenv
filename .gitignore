@@ -9,3 +9,5 @@
 **/pylin
 **/domain.crt
 **/domain.key
+kubectl
+minikube-linux-amd64

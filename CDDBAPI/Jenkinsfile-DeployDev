@@ -1,0 +1,152 @@
+pipeline {
+  agent {
+    kubernetes {
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        spec:
+          containers:
+          - name: docker
+            image: docker:latest
+            command:
+            - cat
+            tty: true
+            volumeMounts:
+             - mountPath: /var/run/docker.sock
+               name: docker-sock
+          volumes:
+          - name: docker-sock
+            hostPath:
+              path: /var/run/docker.sock
+        '''
+    }
+  }
+  stages {
+    stage('Build Database') {
+      steps {
+        container('docker') {
+          sh '''
+            cd CDDBAPI/Database
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            if ! docker build -t registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} .
+            then
+              if ! docker build -t \${reg}:5000/devdb:v\${BUILD_NUMBER} .
+              then
+                echo "[FAILED]"
+                exit 1
+              fi
+            fi
+          '''
+        }
+      }
+    }
+    stage('Build API') {
+      steps {
+        container('docker') {
+          sh '''
+            cd CDDBAPI/Python
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            if ! docker build -t registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} .
+            then
+              if ! docker build -t \${reg}:5000/devapi:v\${BUILD_NUMBER} .
+              then
+                echo "[FAILED]"
+                exit 1
+              fi
+            fi
+          '''
+        }
+      }
+    }
+    stage('Build DB Updater') {
+      steps {
+        container('docker') {
+          sh '''
+            cd CDDBAPI/Python
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            if ! docker build -f Dockerfile-dbupdate -t registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} .
+            then
+              if ! docker build -f Dockerfile-dbupdate -t \${reg}:5000/devdbupdater:v\${BUILD_NUMBER} .
+              then
+                echo "[FAILED]"
+                exit 1
+              fi
+            fi
+          '''
+        }
+      }
+    }
+    stage('Publish Database') {
+      steps {
+        container('docker') {
+          sh '''
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            pushfail=0
+            if ! docker push registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER}
+            then
+              docker tag registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} \${reg}:5000/devdb:v\${BUILD_NUMBER}
+              if ! docker push \${reg}:5000/devdb:v\${BUILD_NUMBER}
+              then
+                pushfail=1
+              fi
+            fi
+
+            echo "Clean up"
+            docker rmi registry-int.docker-registry:5000/devdb:v\${BUILD_NUMBER} || echo "Image did not exist"
+            docker rmi \${reg}:5000/devdb:v\${BUILD_NUMBER} || echo "Image already removed"
+            echo "[RESULT] $pushfail"
+            exit \${pushfail}
+          '''
+        }
+      }
+    }
+    stage('Publish API') {
+      steps {
+        container('docker') {
+          sh '''
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            pushfail=0
+            if ! docker push registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER}
+            then
+              docker tag registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              if ! docker push \${reg}:5000/devapi:v\${BUILD_NUMBER}
+              then
+                pushfail=1
+              fi
+            fi
+
+            echo "Clean up"
+            docker rmi registry-int.docker-registry:5000/devapi:v\${BUILD_NUMBER} \${reg}:5000/devapi:v\${BUILD_NUMBER} || echo "Image did not exist"
+            docker rmi \${reg}:5000/devapi:v\${BUILD_NUMBER} || echo "Image already removed"
+            echo "[RESULT] $pushfail"
+            exit \${pushfail}
+          '''
+        }
+      }
+    }
+    stage('Publish DB Updater') {
+      steps {
+        container('docker') {
+          sh '''
+            reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+            pushfail=0
+            if ! docker push registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER}
+            then
+              docker tag registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              if ! docker push \${reg}:5000/devdbupdater:v\${BUILD_NUMBER}
+              then
+                pushfail=1
+              fi
+            fi
+
+            echo "Clean up"
+            docker rmi registry-int.docker-registry:5000/devdbupdater:v\${BUILD_NUMBER} \${reg}:5000/devdbupdater:v\${BUILD_NUMBER} || echo "Image did not exist"
+            docker rmi \${reg}:5000/devdbupdater:v\${BUILD_NUMBER} || echo "Image already removed"
+            echo "[RESULT] $pushfail"
+            exit \${pushfail}
+          '''
+        }
+      }
+    }
+  }
+}

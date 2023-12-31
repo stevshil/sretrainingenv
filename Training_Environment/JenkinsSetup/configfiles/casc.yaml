@@ -44,6 +44,8 @@ globalCredentialsConfiguration:
     providerFilter: "none"
     typeFilter: "none"
 security:
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: false
   apiToken:
     creationOfLegacyTokenEnabled: false
     tokenGenerationOnCreationEnabled: false
@@ -119,14 +121,14 @@ jobs:
                 branch('*/main')
               }
             }
-            scriptPath("CDDBAPI/Jenkinsfile")
+            scriptPath("CDDBAPI/Jenkinsfile-Build")
             lightweight()
           }
         }
       }
   - script: >
-      pipelineJob('Delete_Rouge_Containers') {
-        displayName('Delete_Rouge_Containers')
+      pipelineJob('Delete_Rogue_Containers') {
+        displayName('Delete_Rogue_Containers')
         definition {
           cps {
             script("""
@@ -167,6 +169,169 @@ jobs:
                             docker rmi \${image}
                           done
                         '''
+                      }
+                    }
+                  }
+                }
+              }
+            """)
+            sandbox()
+          }
+        }
+      }
+  - script: >
+      pipelineJob('Pull_DB_Container') {
+        displayName('Pull_DB_Container')
+        definition {
+          cps {
+            script("""
+              pipeline {
+                agent {
+                  kubernetes {
+                    yaml '''
+                      apiVersion: v1
+                      kind: Pod
+                      spec:
+                        containers:
+                        - name: docker
+                          image: docker:latest
+                          command:
+                          - cat
+                          tty: true
+                          volumeMounts:
+                          - mountPath: /var/run/docker.sock
+                            name: docker-sock
+                        volumes:
+                        - name: docker-sock
+                          hostPath:
+                            path: /var/run/docker.sock
+                    '''
+                  }
+                }
+                stages {
+                  stage('Pull DB Container') {
+                    steps {
+                      container('docker') {
+                        sh '''
+                          reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+                          if ! docker pull ${reg}:5000/devdb:v2
+                          then
+                              echo "[FAILED] to pull image"
+                              exit 1
+                          else
+                              docker images
+                          fi
+                        '''
+                      }
+                    }
+                  }
+                }
+              }
+            """)
+            sandbox()
+          }
+        }
+      }
+  - script: >
+      pipelineJob('List_Registry') {
+        displayName('List_Registry')
+        definition {
+          cps {
+            script("""
+              pipeline {
+                agent {
+                  kubernetes {
+                    defaultContainer 'alpine'
+                    yaml '''
+                      apiVersion: v1
+                      kind: Pod
+                      spec:
+                        containers:
+                        - name: alpine
+                          image: alpine:3.19
+                          command:
+                          - cat
+                          tty: true
+                          volumeMounts:
+                          - mountPath: /var/run/docker.sock
+                            name: docker-sock
+                        volumes:
+                        - name: docker-sock
+                          hostPath:
+                            path: /var/run/docker.sock
+                    '''
+                  }
+                }
+                stages {
+                  stage('List Catalogue') {
+                    steps {
+                      sh '''
+                        apk update
+                        apk add curl
+                        apk add jq
+                        reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+                        if ! curl -ks https://${reg}:5000/v2/_catalog | jq
+                        then
+                            echo "[FAILED] to list catalogue"
+                        fi
+                      '''
+                    }
+                  }
+                  stage('List Tags') {
+                    steps {
+                      sh '''
+                        reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
+                        images=`curl -ks https://${reg}:5000/v2/_catalog | jq -r '.[]' | sed -e 's/"//g' -e 's/,//g'`
+                        for image in ${images}
+                        do
+                            curl -ks https://${reg}:5000/v2/${image}/tags/list | jq
+                        done
+                      '''
+                    }
+                  }
+                }
+              }
+            """)
+            sandbox()
+          }
+        }
+      }
+  - script: >
+      pipelineJob('Get_Job_Number_From_Application_Dev') {
+        displayName('Get_Job_Number_From_Application_Dev')
+        definition {
+          cps {
+            script("""
+              pipeline {
+                agent {
+                  kubernetes {
+                    defaultContainer 'alpine'
+                    yaml '''
+                      apiVersion: v1
+                      kind: Pod
+                      spec:
+                        containers:
+                        - name: alpine
+                          image: alpine:3.19
+                          command:
+                          - cat
+                          tty: true
+                          volumeMounts:
+                          - mountPath: /var/run/docker.sock
+                            name: docker-sock
+                        volumes:
+                        - name: docker-sock
+                          hostPath:
+                            path: /var/run/docker.sock
+                    '''
+                  }
+                }
+                stages {
+                  stage('Version Number') {
+                    steps {
+                      script {
+                        def buildNumber = Jenkins.instance.getItem('Application_Dev').lastSuccessfulBuild.number
+                        echo buildNumber.toString()
                       }
                     }
                   }

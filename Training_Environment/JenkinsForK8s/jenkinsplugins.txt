@@ -5,6 +5,7 @@ pipeline-groovy-lib
 jackson2-api
 jjwt-api
 kubernetes
+kubernetes-cli
 okhttp-api
 pipeline-github-lib
 echarts-api

@@ -6,6 +6,7 @@ You will need a virtual machine running Ubuntu, or Debian before continuing this
 
 ## Prerequisites
 
+- Create a user called **k8s** or **sre**
 - Copy the following folders onto your VM
   - Training_Enviornment/JenkinsSetup
     - Contains the shell script **setup.sh** that will install and run the Kubernetes system
@@ -70,3 +71,41 @@ $ minikube service list
 In the above we can see the command ran, and that our Jenkins system is using **http://192.168.49.2:30000**.
 
 If you are running Minikube on a GUI version of Linux you can open this link in the web browser.
+
+# Rebuilding Jenkins
+
+To restart Jenkins to change the CASC configuration you will need to be in the JenkinsSetup folder, and perform the following;
+
+1. Remove Jenkins
+    ```
+    kubectl delete -f jenkins.yaml
+    ```
+2. Remove the persistent storage
+    ```
+    kubectl delete -f jenkinspv.yaml
+    ```
+3. Run the setup.sh script to rebuild Jenkins with changes
+    ```
+    ./setup.sh
+    ```
+
+# Debugging
+
+The ingress stage may fail with
+
+```
+❌  Exiting due to MK_ADDON_ENABLE: enable failed: run callbacks: running callbacks: [waiting for app.kubernetes.io/name=ingress-nginx pods: timed out waiting for the condition]
+```
+
+If it does use the following command;
+
+```
+kubectl get all -n ingress-nginx
+```
+
+Wait for
+```
+deployment.apps/ingress-nginx-controller   1/1     1            1           7m25s
+```
+
+And also the pod to be 1/1 Running.
