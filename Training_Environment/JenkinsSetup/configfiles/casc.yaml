@@ -244,12 +244,12 @@ jobs:
         displayName('List_Registry')
         definition {
           cps {
-            script("""
+            script('''
               pipeline {
                 agent {
                   kubernetes {
                     defaultContainer 'alpine'
-                    yaml '''
+                    yaml """
                       apiVersion: v1
                       kind: Pod
                       spec:
@@ -266,39 +266,41 @@ jobs:
                         - name: docker-sock
                           hostPath:
                             path: /var/run/docker.sock
-                    '''
+                    """
                   }
                 }
                 stages {
                   stage('List Catalogue') {
                     steps {
-                      sh '''
+                      sh """
                         apk update
                         apk add curl
                         apk add jq
                         reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
-                        if ! curl -ks https://${reg}:5000/v2/_catalog | jq
+                        echo "\$reg"
+                        if ! curl -ks "https://\$reg:5000/v2/_catalog" | jq
                         then
                             echo "[FAILED] to list catalogue"
                         fi
-                      '''
+                      """
                     }
                   }
                   stage('List Tags') {
                     steps {
-                      sh '''
+                      sh """
                         reg=`nslookup registry-int.docker-registry.svc.cluster.local | grep Address | tail -1 | awk '{print \$2}'`
-                        images=`curl -ks https://${reg}:5000/v2/_catalog | jq -r '.[]' | sed -e 's/"//g' -e 's/,//g'`
-                        for image in ${images}
+                        echo "\$reg"
+                        images=`curl -ks "https://\$reg:5000/v2/_catalog" | jq -r '.[]' | sed -e 's/"//g' -e 's/,//g'`
+                        for image in \$images
                         do
-                            curl -ks https://${reg}:5000/v2/${image}/tags/list | jq
+                            curl -ks "https://\$reg:5000/v2/${image}/tags/list" | jq
                         done
-                      '''
+                      """
                     }
                   }
                 }
               }
-            """)
+            ''')
             sandbox()
           }
         }
